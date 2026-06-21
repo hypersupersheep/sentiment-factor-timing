@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# 编辑器 / 工具
+.claude/
+.workbuddy/
+.vscode/
+.idea/
+
+# 通达信本地数据缓存(可由 tdx_data.py 重新拉取, 不入库)
+common/cache/
+**/cache/
+
+# 研报 PDF 原文(版权归各券商, 不分发)
+*.pdf

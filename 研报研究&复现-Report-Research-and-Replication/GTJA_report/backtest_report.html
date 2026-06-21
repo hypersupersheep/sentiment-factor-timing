@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTJA情绪指数策略 - 完整回测报告</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+.header{text-align:center;padding:40px 20px;background:linear-gradient(135deg,#1e293b,#0f172a);border-bottom:2px solid #334155;margin-bottom:30px}
+.header h1{font-size:2em;color:#f8fafc;margin-bottom:10px}
+.header p{color:#94a3b8;font-size:0.95em}
+.card{background:#1e293b;border-radius:12px;padding:24px;margin-bottom:24px;border:1px solid #334155}
+.card h2{color:#f8fafc;font-size:1.3em;border-bottom:2px solid #3b82f6;padding-bottom:8px;margin-bottom:16px}
+.card h3{color:#cbd5e1;font-size:1.1em;margin:16px 0 8px}
+table{width:100%;border-collapse:collapse;margin:10px 0}
+th,td{padding:10px 14px;text-align:right;border-bottom:1px solid #334155}
+th{background:#0f172a;color:#93c5fd;font-weight:600;text-align:right}
+td:first-child,th:first-child{text-align:left}
+tr:hover{background:#283447}
+.positive{color:#ef4444}
+.negative{color:#22c55e}
+.warn{color:#f59e0b}
+.danger{color:#ef4444}
+.info{background:#1a2740;border-left:4px solid #3b82f6;padding:14px 18px;margin:12px 0;border-radius:4px;font-size:0.93em}
+.warning-box{background:#2a1f1a;border-left:4px solid #f59e0b;padding:14px 18px;margin:12px 0;border-radius:4px;font-size:0.93em}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:0.82em;font-weight:600}
+.badge-green{background:#166534;color:#86efac}
+.badge-red{background:#991b1b;color:#fca5a5}
+.badge-yellow{background:#78350f;color:#fcd34d}
+.badge-blue{background:#1e3a5f;color:#93c5fd}
+.section-label{color:#94a3b8;font-size:0.85em;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.metric-card{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:16px;text-align:center}
+.metric-value{font-size:1.8em;font-weight:700;margin:8px 0}
+.metric-label{color:#94a3b8;font-size:0.85em}
+.metric-sub{color:#64748b;font-size:0.78em}
+hr{border:0;border-top:1px solid #334155;margin:16px 0}
+.footer{text-align:center;color:#64748b;padding:30px;font-size:0.85em}
+.caveat-list{list-style:none;padding:0}
+.caveat-list li{padding:6px 0 6px 24px;position:relative;font-size:0.93em}
+.caveat-list li:before{content:"⚠";position:absolute;left:0;color:#f59e0b}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>GTJA 情绪指数策略 — 完整回测报告</h1>
+  <p>国泰君安《市场情绪指数的建立及应用》(2011-07-11) 策略复现与样本外评估</p>
+  <p style="margin-top:6px;color:#64748b">回测日期: 2026-06-10 | 数据: akashare CSI300 日线 + PE/PB + 开户数代理</p>
+</div>
+
+<!-- ====== 回测参数 ====== -->
+<div class="card">
+  <h2>一、回测设定</h2>
+  <div class="grid-2">
+    <div>
+      <table>
+        <tr><th style="text-align:left">参数</th><th>取值</th></tr>
+        <tr><td>交易标的</td><td style="color:#93c5fd">沪深300 ETF (510300)</td></tr>
+        <tr><td>数据起点</td><td>2005-04-08</td></tr>
+        <tr><td>周频采样</td><td>周五收盘</td></tr>
+        <tr><td>滚动PCA窗口</td><td>156 周 (≈3年)</td></tr>
+        <tr><td>MA平滑窗口</td><td>4 周</td></tr>
+        <tr><td>换手率滞后</td><td>-4 周</td></tr>
+        <tr><td>GMX阈值倍数</td><td>2.0×σ</td></tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr><th style="text-align:left">交易参数</th><th>取值</th></tr>
+        <tr><td>成交时点</td><td style="color:#86efac">t周五信号 → t+1周一开盘</td></tr>
+        <tr><td>佣金(单边)</td><td>0.01% (1bp)</td></tr>
+        <tr><td>滑点(单边)</td><td>0.05% (5bp)</td></tr>
+        <tr><td>印花税</td><td>ETF免征</td></tr>
+        <tr><td>合计单边成本</td><td style="color:#f59e0b">0.06% (6bp)</td></tr>
+        <tr><td>空仓利率</td><td>货币基金 1.8% 年化</td></tr>
+        <tr><td>仓位约束</td><td>全仓进出, 无整手约束</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 数据说明 ====== -->
+<div class="card">
+  <h2>二、数据来源与重要说明</h2>
+  <table>
+    <tr><th>变量</th><th>来源</th><th>状态</th><th>说明</th></tr>
+    <tr>
+      <td>沪深300指数</td><td>akshare stock_zh_index_daily</td>
+      <td><span class="badge badge-green">完整</span></td>
+      <td>2005-04-08起每日OHLCV, 共5142条</td>
+    </tr>
+    <tr>
+      <td>PE (滚动市盈率)</td><td>akshare stock_index_pe_lg</td>
+      <td><span class="badge badge-green">完整</span></td>
+      <td>2005-04-08起每日, 使用TTM滚动市盈率</td>
+    </tr>
+    <tr>
+      <td>PB (市净率)</td><td>akshare stock_index_pb_lg</td>
+      <td><span class="badge badge-green">完整</span></td>
+      <td>2005-04-08起每日</td>
+    </tr>
+    <tr>
+      <td>换手率</td><td>CSI300成交额代理</td>
+      <td><span class="badge badge-yellow">代理</span></td>
+      <td>使用5日均成交额/252日均成交额比值作为换手率活跃度代理</td>
+    </tr>
+    <tr>
+      <td>上涨家数占比</td><td>CSI300收益率代理</td>
+      <td><span class="badge badge-yellow">代理</span></td>
+      <td>基于CSI300日收益率分布加权映射, 不足: 范围窄[0.44,0.56]</td>
+    </tr>
+    <tr>
+      <td>IPO首日涨幅</td><td>市场趋势代理</td>
+      <td><span class="badge badge-red">代理</span></td>
+      <td>akshare仅50条近期IPO数据; 用20日收益+波动作为代理<br>IPO暂停期(2012-10~2014-01, 2015-07~11): 向前填充</td>
+    </tr>
+    <tr>
+      <td>新增开户数</td><td>2015-04起真实 / 之前代理</td>
+      <td><span class="badge badge-yellow">混合</span></td>
+      <td>2015-04前用CSI300成交额代理, 之后用stock_account_statistics_em真实数据<br>口径切换于2015-04: 需注意分段z-score标准化</td>
+    </tr>
+  </table>
+
+  <div class="warning-box" style="margin-top:16px">
+    <strong>⚠ 核心数据限制:</strong> 6个情绪变量中3个依赖代理变量(上涨占比/IPO/开户数), 
+    这可能导致信号质量显著退化。原始GTJA报告基于Wind终端数据(含完整的周频新增A股开户数、IPO首日涨幅、市场涨跌家数等),
+    akshare开源数据无法完整覆盖这些变量。以下回测结果应在此数据限制下解读。
+  </div>
+</div>
+
+<!-- ====== 三段绩效汇总 ====== -->
+<div class="card">
+  <h2>三、三段绩效汇总</h2>
+  <table>
+    <tr>
+      <th>指标</th>
+      <th>样本内<br><span style="font-weight:400;color:#94a3b8">2009-04~2011-07</span></th>
+      <th>样本外<br><span style="font-weight:400;color:#94a3b8">2011-07~2026-06</span></th>
+      <th>全区间</th>
+      <th>基准(样本外)</th>
+    </tr>
+    <tr>
+      <td>周数</td><td>118</td><td>779</td><td>897</td><td>779</td>
+    </tr>
+    <tr>
+      <td>年化收益</td>
+      <td class="positive">12.91%</td>
+      <td class="negative">-0.56%</td>
+      <td>1.24%</td>
+      <td>2.75%</td>
+    </tr>
+    <tr>
+      <td>年化波动</td><td>21.44%</td><td>16.07%</td><td>16.87%</td><td>21.87%</td>
+    </tr>
+    <tr>
+      <td>Sharpe Ratio</td>
+      <td class="positive">0.52</td>
+      <td class="negative">-0.15</td>
+      <td>-0.03</td>
+      <td>0.04</td>
+    </tr>
+    <tr>
+      <td>最大回撤</td><td>-27.72%</td><td class="danger">-46.66%</td><td>-46.66%</td><td>-46.66%</td>
+    </tr>
+    <tr>
+      <td>Calmar Ratio</td><td>0.47</td><td>-0.01</td><td>0.03</td><td>0.06</td>
+    </tr>
+    <tr>
+      <td>年均换手(单边)</td><td>8.37</td><td>2.07</td><td>2.84</td><td>0.07</td>
+    </tr>
+    <tr>
+      <td>周胜率</td><td>63.56%</td><td>67.52%</td><td>67.11%</td><td>50.96%</td>
+    </tr>
+    <tr>
+      <td>期末净值</td><td>1.317</td><td>0.919</td><td>1.237</td><td>1.502</td>
+    </tr>
+    <tr>
+      <td>成本拖累(费前-费后)</td><td>—</td><td class="danger">1.98%</td><td>0.17%</td><td>—</td>
+    </tr>
+  </table>
+
+  <div class="info" style="margin-top:16px">
+    <strong>注:</strong> 预热期 = 156周滚动PCA + 4周MA + 4周换手率滞后 ≈ 164周(3.15年)。
+    实际回测从2009-04-10开始。样本内仅约2.27年, 统计显著性有限。
+  </div>
+</div>
+
+<!-- ====== 逐年收益 ====== -->
+<div class="card">
+  <h2>四、样本外逐年收益 (2011-07-11 ~ 至今)</h2>
+  <table>
+    <tr>
+      <th>年份</th>
+      <th>策略收益</th>
+      <th>基准收益</th>
+      <th>超额收益</th>
+      <th>年化波动</th>
+      <th>Sharpe</th>
+      <th>最大回撤</th>
+      <th>评价</th>
+    </tr>
+    <tr>
+      <td>2011*</td><td class="negative">-22.00%</td><td class="negative">-27.70%</td><td class="positive">+5.70%</td><td>19.03%</td><td>-2.60</td><td>-18.34%</td><td><span class="badge badge-yellow">抗跌</span></td>
+    </tr>
+    <tr>
+      <td>2012</td><td>0.84%</td><td>7.52%</td><td class="negative">-6.68%</td><td>18.21%</td><td>-0.05</td><td>-19.73%</td><td><span class="badge badge-red">跑输</span></td>
+    </tr>
+    <tr>
+      <td>2013</td><td class="negative">-8.69%</td><td class="negative">-5.33%</td><td class="negative">-3.37%</td><td>10.11%</td><td>-1.04</td><td>-9.78%</td><td><span class="badge badge-red">跑输</span></td>
+    </tr>
+    <tr>
+      <td>2014</td><td>2.80%</td><td class="positive">42.45%</td><td class="negative">-39.65%</td><td>10.50%</td><td>0.10</td><td>-12.93%</td><td><span class="badge badge-red">严重跑输</span></td>
+    </tr>
+    <tr>
+      <td>2015</td><td>1.80%</td><td class="positive">17.00%</td><td class="negative">-15.20%</td><td>0.00%</td><td>8.79</td><td>0.00%</td><td><span class="badge badge-yellow">全年空仓</span></td>
+    </tr>
+    <tr>
+      <td>2016</td><td>1.83%</td><td class="negative">-12.83%</td><td class="positive">+14.66%</td><td>0.00%</td><td>8.79</td><td>0.00%</td><td><span class="badge badge-yellow">全年空仓</span></td>
+    </tr>
+    <tr>
+      <td>2017</td><td>1.80%</td><td class="positive">20.15%</td><td class="negative">-18.35%</td><td>0.00%</td><td>8.79</td><td>0.00%</td><td><span class="badge badge-yellow">全年空仓</span></td>
+    </tr>
+    <tr>
+      <td>2018</td><td>1.80%</td><td class="negative">-26.69%</td><td class="positive">+28.49%</td><td>0.00%</td><td>8.79</td><td>0.00%</td><td><span class="badge badge-yellow">全年空仓</span></td>
+    </tr>
+    <tr>
+      <td>2019</td><td class="negative">-0.69%</td><td class="positive">30.62%</td><td class="negative">-31.30%</td><td>13.55%</td><td>-0.18</td><td>-13.28%</td><td><span class="badge badge-red">跑输</span></td>
+    </tr>
+    <tr>
+      <td>2020</td><td class="positive">26.79%</td><td class="positive">24.86%</td><td class="positive">+1.93%</td><td>25.59%</td><td>0.98</td><td>-15.06%</td><td><span class="badge badge-green">略胜</span></td>
+    </tr>
+    <tr>
+      <td>2021</td><td>0.32%</td><td class="negative">-0.31%</td><td class="positive">+0.63%</td><td>20.09%</td><td>-0.07</td><td>-19.44%</td><td><span class="badge badge-yellow">持平</span></td>
+    </tr>
+    <tr>
+      <td>2022</td><td class="negative">-23.12%</td><td class="negative">-22.90%</td><td class="negative">-0.22%</td><td>18.81%</td><td>-1.32</td><td>-27.17%</td><td><span class="badge badge-red">跑输</span></td>
+    </tr>
+    <tr>
+      <td>2023</td><td class="negative">-10.80%</td><td class="negative">-11.17%</td><td class="positive">+0.37%</td><td>15.90%</td><td>-0.79</td><td>-21.99%</td><td><span class="badge badge-yellow">持平</span></td>
+    </tr>
+    <tr>
+      <td>2024</td><td class="positive">19.63%</td><td class="positive">17.41%</td><td class="positive">+2.22%</td><td>31.90%</td><td>0.56</td><td>-14.21%</td><td><span class="badge badge-green">略胜</span></td>
+    </tr>
+    <tr>
+      <td>2025</td><td class="positive">16.94%</td><td class="positive">16.52%</td><td class="positive">+0.42%</td><td>14.88%</td><td>1.02</td><td>-8.59%</td><td><span class="badge badge-green">跑平</span></td>
+    </tr>
+    <tr>
+      <td>2026*</td><td>1.33%</td><td>3.31%</td><td class="negative">-1.98%</td><td>12.73%</td><td>0.09</td><td>-6.79%</td><td><span class="badge badge-blue">未完</span></td>
+    </tr>
+    <tr style="font-weight:700;background:#283447">
+      <td>累计</td><td class="negative">-8.11%</td><td class="positive">50.18%</td><td class="negative">-58.29%</td><td>16.07%</td><td>-0.15</td><td>-46.66%</td><td><span class="badge badge-red">大幅跑输</span></td>
+    </tr>
+  </table>
+  <p style="color:#64748b;font-size:0.85em;margin-top:8px">* 2011年仅含下半年, 2026年仅含H1</p>
+</div>
+
+<!-- ====== GMVX分区准确率 ====== -->
+<div class="card">
+  <h2>五、GMVX 分区准确率对比 (样本内, 报告表6复现)</h2>
+  <table>
+    <tr>
+      <th>GMVX区域</th>
+      <th>报告样本数</th>
+      <th>报告触发率</th>
+      <th>报告准确率</th>
+      <th>复现样本数</th>
+      <th>复现触发率</th>
+      <th>复现准确率</th>
+      <th>差异</th>
+    </tr>
+    <tr><td>全样本</td><td>301</td><td>100.00%</td><td>65.78%</td><td>274</td><td>100.00%</td><td>50.73%</td><td class="negative">-15.05%</td></tr>
+    <tr><td>≥0</td><td>136</td><td>45.18%</td><td>75.74%</td><td>127</td><td>46.35%</td><td>57.48%</td><td class="negative">-18.26%</td></tr>
+    <tr><td>&lt;0</td><td>165</td><td>54.82%</td><td>57.58%</td><td>147</td><td>53.16%</td><td>44.90%</td><td class="negative">-12.68%</td></tr>
+    <tr><td>≥1.7</td><td>7</td><td>2.33%</td><td>28.57%</td><td>8</td><td>2.92%</td><td>37.50%</td><td class="positive">+8.93%</td></tr>
+    <tr><td>≥0.75且&lt;1.7</td><td>51</td><td>16.94%</td><td>80.39%</td><td>37</td><td>13.50%</td><td>59.46%</td><td class="negative">-20.93%</td></tr>
+    <tr><td>≥0且&lt;0.75</td><td>78</td><td>25.91%</td><td>76.92%</td><td>82</td><td>29.93%</td><td>58.54%</td><td class="negative">-18.38%</td></tr>
+    <tr><td>≥-1且&lt;0</td><td>153</td><td>50.83%</td><td>56.21%</td><td>86</td><td>31.39%</td><td>41.86%</td><td class="negative">-14.35%</td></tr>
+    <tr><td>&lt;-1</td><td>12</td><td>3.99%</td><td>75.00%</td><td>61</td><td>22.26%</td><td>49.18%</td><td class="negative">-25.82%</td></tr>
+  </table>
+
+  <div class="info" style="margin-top:16px">
+    <strong>差异来源分析:</strong><br>
+    1. <strong>数据源不同:</strong> 原始报告使用Wind终端完整数据(含周频新增A股开户数、IPO首日涨幅、市场涨跌家数),
+    本回测使用akshare开源数据, 其中3/6变量为代理变量;<br>
+    2. <strong>全样本PCA差异:</strong> 报告使用样本内(至2011-07)全样本PCA, 本复现使用全区间(至2026-06)PCA,
+    PC3解释度(14.12% vs 报告未公开)可能不同;<br>
+    3. <strong>GMVX分布偏移:</strong> 复现中GMVX<-1区域占比22.26%(vs报告3.99%), 表明信号分布与原始数据有显著差异;<br>
+    4. <strong>全样本准确率差距(-15.05pp):</strong> 核心原因是代理变量缺乏原始信息含量, GMVX对短期反转的预测力大幅衰减。
+  </div>
+</div>
+
+<!-- ====== 成本敏感性 ====== -->
+<div class="card">
+  <h2>六、成本敏感性分析</h2>
+  <table>
+    <tr>
+      <th>单边成本</th>
+      <th>年化收益</th>
+      <th>Sharpe</th>
+      <th>最大回撤</th>
+      <th>Calmar</th>
+      <th>年均换手</th>
+      <th>费后vs费前</th>
+      <th>状态</th>
+    </tr>
+    <tr><td>0bp (零成本)</td><td>1.41%</td><td>-0.02</td><td>-46.66%</td><td>0.03</td><td>2.84</td><td>基准</td><td><span class="badge badge-red">失效</span></td></tr>
+    <tr><td>5bp</td><td>1.27%</td><td>-0.03</td><td>-46.66%</td><td>0.03</td><td>2.84</td><td>-0.14%</td><td><span class="badge badge-red">失效</span></td></tr>
+    <tr><td>10bp</td><td>1.13%</td><td>-0.04</td><td>-46.66%</td><td>0.02</td><td>2.84</td><td>-0.29%</td><td><span class="badge badge-red">失效</span></td></tr>
+    <tr><td>20bp</td><td>0.84%</td><td>-0.06</td><td>-46.66%</td><td>0.02</td><td>2.84</td><td>-0.58%</td><td><span class="badge badge-red">失效</span></td></tr>
+  </table>
+
+  <div class="warning-box" style="margin-top:16px">
+    <strong>⚠ 策略在所有成本档位下均失效:</strong> 即使在零成本下, 全区间Sharpe为-0.02, 
+    策略本身已无法产生正超额收益。成本增加仅加剧亏损, 而非导致失效的根本原因。<br><br>
+    <strong>成本敏感度 ≈ 0.029% 每bp:</strong> 年化收益 -0.029% per bp单边成本增加 × 年均换手2.84 ≈ 0.01。
+    策略换手率较低(大部分年份空仓), 成本拖累有限。
+  </div>
+</div>
+
+<!-- ====== 关键失败归因 ====== -->
+<div class="card">
+  <h2>七、样本外失败归因</h2>
+  <div class="grid-2">
+    <div>
+      <h3>1. 策略参与度严重不足</h3>
+      <p style="color:#94a3b8;font-size:0.93em">
+        样本外779周中, 策略净值持平(0%波动)的周多达<strong>235周(30%)</strong>, 
+        反映信号频繁指向空仓。2015、2016、2017、2018连续四年全年空仓, 
+        完全错过了2014-2015牛市和2017蓝筹行情。
+      </p>
+    </div>
+    <div>
+      <h3>2. 信号方向性错误</h3>
+      <p style="color:#94a3b8;font-size:0.93em">
+        GMVX≥0时复现准确率仅57.48%(vs报告75.74%), 
+        &lt;0时仅44.90%(vs报告57.58%)。
+        代理变量的噪声导致GMVX对短期反转的预测力衰减约15-20个百分点。
+      </p>
+    </div>
+    <div>
+      <h3>3. 市场结构变迁</h3>
+      <p style="color:#94a3b8;font-size:0.93em">
+        2014-2023年主板44%涨停上限制度使IPO首日涨幅变量的信息量退化。
+        2015年股灾后市场微观结构剧变, 历史相关性模式可能已发生结构性断裂。
+        2019年后外资流入、注册制改革进一步改变了市场参与者和情绪传导机制。
+      </p>
+    </div>
+    <div>
+      <h3>4. 数据质量制约</h3>
+      <p style="color:#94a3b8;font-size:0.93em">
+        6个情绪变量中仅3个(PE/PB/换手率代理)有完整真实数据。
+        上涨家数占比代理范围仅[0.44,0.56], 信息含量极低。
+        IPO首日涨幅和开户数(2005-2015段)均使用代理, 大幅降低PC3的反转信号质量。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 变量断点处理 ====== -->
+<div class="card">
+  <h2>八、变量断点处理记录</h2>
+  <table>
+    <tr><th>变量</th><th>断点</th><th>处理方式</th><th>影响评估</th></tr>
+    <tr>
+      <td>新增开户数</td>
+      <td>2015-04 口径切换<br>(中登公司改为公布"新增投资者")</td>
+      <td>2005~2015-03用CSI300成交额代理;<br>2015-04起用akshare真实数据<br>z-score标准化在滚动窗口内独立进行</td>
+      <td><span class="badge badge-yellow">中等</span> 代理变量相关性约0.6, 切换前后标准差可比</td>
+    </tr>
+    <tr>
+      <td>IPO首日涨幅</td>
+      <td>2012-10~2014-01 IPO暂停<br>2015-07~2015-11 IPO暂停</td>
+      <td>暂停期向前填充最近有效值<br>数据文件中标注填充行</td>
+      <td><span class="badge badge-red">显著</span> 代理变量缺乏真实IPO定价信息</td>
+    </tr>
+    <tr>
+      <td>IPO涨停上限</td>
+      <td>2014~2023 主板44%涨停上限</td>
+      <td>报告中单独说明该变量信息量退化</td>
+      <td><span class="badge badge-red">显著</span> IPO首日涨幅被人为截断, 失去情绪指示功能</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ====== 结论 ====== -->
+<div class="card" style="border:2px solid #ef4444">
+  <h2>九、结论与讨论</h2>
+
+  <div style="font-size:1.05em;line-height:1.9">
+    <p><strong style="color:#ef4444">1. 策略在样本外显著失效。</strong> 
+    样本内年化12.91%/Sharpe 0.52, 样本外年化-0.56%/Sharpe -0.15。
+    这可能是过拟合(参数在样本内优化)、数据差异(代理变量缺少原始信息)或市场结构变化的综合结果。</p>
+
+    <p style="margin-top:12px"><strong style="color:#f59e0b">2. 零成本下策略已为负Sharpe。</strong>
+    成本敏感性分析显示, 策略本身信号质量不足以产生正超额收益, 而非成本过高导致失效。</p>
+
+    <p style="margin-top:12px"><strong style="color:#f59e0b">3. 策略参与度过低。</strong>
+    样本外30%的周处于完全空仓状态, 导致无法捕获趋势性行情(如2014年牛市)。</p>
+
+    <p style="margin-top:12px"><strong style="color:#93c5fd">4. 代理变量是最大不确定性来源。</strong>
+    使用Wind/Bloomberg等终端获取完整的IPO首日涨幅、周频新增A股开户数和市场涨跌家数数据,
+    是准确复现该策略的必要条件。本回测结果应在数据限制下审慎解读。</p>
+
+    <p style="margin-top:12px"><strong style="color:#93c5fd">5. 全样本PCA显示PC1解释度49.52%、PC3仅14.12%。</strong>
+    PC3(GMVX)的信息含量较弱, 当数据质量进一步下降时, 其预测能力可能完全消失。</p>
+  </div>
+</div>
+
+<!-- ====== 免责声明 ====== -->
+<div class="footer">
+  <p>本报告仅供研究参考, 不构成投资建议。回测结果受数据源、代理变量质量和参数设定影响, 不代表未来表现。</p>
+  <p>数据来源: akshare | 回测引擎: Python/pandas/numpy | 生成时间: 2026-06-10</p>
+</div>
+
+</div>
+</body>
+</html>
